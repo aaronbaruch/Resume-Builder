@@ -166,6 +166,24 @@ footer {
   white-space: pre-line;
 }
 
+.education-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 15px;
+}
+
+.education-details {
+  flex-grow: 1;
+  max-width: 70%; /* Adjust as needed */
+}
+
+.education-dates {
+  text-align: right;
+  white-space: nowrap; /* Prevent line break */
+  max-width: 30%; /* Adjust as needed */
+}
+
 
 /* Keyframes for the fadeOut animation */
 @keyframes fadeOut {

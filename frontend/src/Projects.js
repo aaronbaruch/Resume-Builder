@@ -18,11 +18,10 @@
 // export default Projects;
 
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
 
 Modal.setAppElement('#root');
-
 
 function Projects() {
   const [projects, setProjects] = useState([]);
@@ -30,39 +29,46 @@ function Projects() {
   const [newProject, setNewProject] = useState({
     title: '',
     description: '',
-    technology: '',
-    image: null,
   });
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/projects/')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => setProjects(data))
+      .catch(error => console.error('Error:', error));
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewProject({ ...newProject, [name]: value });
   };
 
-  const handleImageChange = (e) => {
-    setNewProject({ ...newProject, image: e.target.files[0] });
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append('title', newProject.title);
-    formData.append('description', newProject.description);
-    formData.append('technology', newProject.technology);
-    formData.append('image', newProject.image);
-
-    // Replace with your actual POST request URL and include necessary headers
     fetch('http://localhost:8000/api/projects/', {
       method: 'POST',
-      body: formData, // For file upload, FormData should be used
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newProject),
     })
       .then(response => response.json())
       .then(data => {
         setProjects([...projects, data]);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
+        setNewProject({ title: '', description: '' });
         setModalIsOpen(false);
-        setNewProject({ title: '', description: '', technology: '', image: null });
       })
-      .catch(error => console.error('Error:', error));
+      .catch(error => {
+        console.error('Error:', error);
+      });
   };
 
   return (
@@ -71,21 +77,21 @@ function Projects() {
       {projects.map(project => (
         <div key={project.id}>
           <h3>{project.title}</h3>
-          {/* Display project details */}
+          <p>{project.description}</p>
         </div>
       ))}
       <button onClick={() => setModalIsOpen(true)}>Add +</button>
-
       <Modal isOpen={modalIsOpen} onRequestClose={() => setModalIsOpen(false)}>
         <form onSubmit={handleSubmit}>
           <label>Title:<input type="text" name="title" value={newProject.title} onChange={handleInputChange} /></label>
           <label>Description:<textarea name="description" value={newProject.description} onChange={handleInputChange} /></label>
-          <label>Technology:<input type="text" name="technology" value={newProject.technology} onChange={handleInputChange} /></label>
-          <label>Image:<input type="file" name="image" onChange={handleImageChange} /></label>
           <button type="submit">Submit</button>
           <button onClick={() => setModalIsOpen(false)}>Cancel</button>
         </form>
       </Modal>
+      {showSuccessMessage && (
+        <div className="success-message">Added Successfully!</div>
+      )}
     </section>
   );
 }
