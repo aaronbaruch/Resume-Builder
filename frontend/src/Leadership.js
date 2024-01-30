@@ -37,128 +37,151 @@
 
 // export default Leadership;
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
+import moment from 'moment';
 
 Modal.setAppElement('#root'); // This binds your modal to your app element
 
 function Leadership() {
-  const [modalIsOpen, setModalIsOpen] = useState(false);
-  const [newLeadership, setNewLeadership] = useState({
+  const [leaderships, setLeaderships] = useState([]); // State for existing leaderships
+  const [modalIsOpen, setModalIsOpen] = useState(false); // State for modal visibility
+  const [newLeadership, setNewLeadership] = useState({ // State for new leadership form
     organization: '',
     position: '',
     start_date: '',
-    end_date: '', // This could be an empty string if it is a current position
+    end_date: '',
     description: '',
   });
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false); // State to control success message
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/leadership/')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        setLeaderships(data); // Update the skills state with fetched data
+      })
+      .catch(error => {
+        console.error('Error fetching skills:', error);
+      });
+  }, []);
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewLeadership({ ...newLeadership, [name]: value });
+    const { name, value, type, checked } = e.target;
+    setNewLeadership({ ...newLeadership, [name]: type === 'checkbox' ? checked : value, });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Here you would handle the submission to the backend
 
-    const handleSubmit = (e) => {
-      e.preventDefault();
-      // The actual endpoint where your Django backend is serving the leadership data
-      const apiUrl = 'http://localhost:8000/api/leadership/';
-
-      fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Include other headers like authorization if needed
-        },
-        body: JSON.stringify(newLeadership)
-      })
-        .then(response => {
-          if (response.ok) {
-            return response.json();
-          }
-          throw new Error('Network response was not ok.');
-        })
-        .then(data => {
-          console.log('Success:', data);
-          // Here you would update your state with the new leadership data
-          // and close the modal
-          setModalIsOpen(false);
-          // ... Reset your form or update state as needed ...
-        })
-        .catch(error => {
-          console.error('Error submitting leadership:', error);
-        });
+    // Create a new object for the request payload
+    let leadershipPayload = {
+      ...newLeadership,
+      end_date: newLeadership.isCurrent ? null : newLeadership.end_date
     };
-    // After submission, close the modal and reset the form
-    setModalIsOpen(false);
-    setNewLeadership({
-      organization: '',
-      position: '',
-      start_date: '',
-      end_date: '',
-      description: '',
-    });
+
+    // Remove 'isCurrent' from payload since it's not a part of your Django model
+    delete leadershipPayload.isCurrent;
+
+    fetch('http://localhost:8000/api/leadership/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(leadershipPayload),
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        setLeaderships(prevLeaderships => [...prevLeaderships, data]);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
+        setNewLeadership({
+          organization: '',
+          position: '',
+          start_date: '',
+          end_date: '',
+          description: '',
+          isCurrent: false,
+        });
+        setModalIsOpen(false);
+      })
+      .catch(error => {
+        console.error('Error submitting leadership:', error);
+      });
   };
+
+  const formatDate = (dateString) => {
+    return dateString ? moment(dateString).format('MMMM YYYY') : '';
+  };
+
+  const renderLeadership = (lead) => {
+    const formattedStartDate = formatDate(lead.start_date);
+    const isCurrent = !lead.end_date;
+    const formattedEndDate = isCurrent ? 'Current' : formatDate(lead.end_date);
+
+    return (
+      <div className="leadership-entry" key={lead.id}>
+        <div className="leadership-details">
+          <h3>{lead.position} at {lead.organization}</h3>
+          <p className="leadership-description">{lead.description.split('\n').map((line, index) => (
+            <React.Fragment key={index}>
+              {line}
+              <br />
+            </React.Fragment>
+          ))}</p>
+        </div>
+        <div className="leadership-dates">
+          <p>{formattedStartDate} - {formattedEndDate}</p>
+        </div>
+      </div>
+    );
+  };
+
 
   return (
     <section id="leadership">
-      <h2>Leadership</h2>
+      <h2>Relevant Leadership</h2>
+      {leaderships.map(renderLeadership)}
       <button onClick={() => setModalIsOpen(true)}>Add +</button>
-
+      {/* ... Modal and form ... */}
       <Modal isOpen={modalIsOpen} onRequestClose={() => setModalIsOpen(false)}>
         <form onSubmit={handleSubmit}>
-          <label>
-            Organization:
-            <input
-              type="text"
-              name="organization"
-              value={newLeadership.organization}
-              onChange={handleInputChange}
-            />
-          </label>
-          <label>
-            Position:
-            <input
-              type="text"
-              name="position"
-              value={newLeadership.position}
-              onChange={handleInputChange}
-            />
-          </label>
-          <label>
-            Start Date:
-            <input
-              type="date"
-              name="start_date"
-              value={newLeadership.start_date}
-              onChange={handleInputChange}
-            />
-          </label>
-          <label>
-            End Date:
-            <input
-              type="date"
-              name="end_date"
-              value={newLeadership.end_date}
-              onChange={handleInputChange}
-            />
-          </label>
-          <label>
-            Description:
-            <textarea
-              name="description"
-              value={newLeadership.description}
-              onChange={handleInputChange}
-            />
-          </label>
+          <label>Organization:<input type="text" name="organization" value={newLeadership.organization} onChange={handleInputChange} /></label>
+          <label>Position:<input type="text" name="position" value={newLeadership.position} onChange={handleInputChange} /></label>
+          <label>Start Date:<input type="date" name="start_date" value={newLeadership.start_date} onChange={handleInputChange} /></label>
+          <label>Currently Working Here:<input
+            type="checkbox"
+            name="isCurrent"
+            checked={newLeadership.isCurrent}
+            onChange={handleInputChange} /></label>
+          <label>End Date:<input
+            type="date"
+            name="end_date"
+            value={newLeadership.end_date}
+            onChange={handleInputChange}
+            disabled={newLeadership.isCurrent} /></label>
+          <label>Description:<textarea name="description" value={newLeadership.description} onChange={handleInputChange} /></label>
           <button type="submit">Submit</button>
           <button onClick={() => setModalIsOpen(false)}>Cancel</button>
         </form>
       </Modal>
+      {showSuccessMessage && (
+        <div className="success-message">Added Successfully!</div>
+      )}
     </section>
   );
 }
 
 export default Leadership;
+
+

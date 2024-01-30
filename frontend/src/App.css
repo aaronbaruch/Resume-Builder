@@ -166,6 +166,28 @@ footer {
   white-space: pre-line;
 }
 
+.leadership-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 15px;
+}
+
+.leadership-dates {
+  text-align: right;
+  white-space: nowrap; /* Prevent line break */
+  max-width: 30%; /* Adjust as needed */
+}
+
+
+.leadership-details {
+  flex-grow: 1;
+}
+
+.leadership-description {
+  white-space: pre-line;
+}
+
 .education-entry {
   display: flex;
   justify-content: space-between;
